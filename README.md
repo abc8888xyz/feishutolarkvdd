@@ -1,62 +1,71 @@
 # feishutolarkvdd
 
-Clone Feishu wiki pages to Lark wiki with 100% block-by-block fidelity.
+Feishu wiki to Lark wiki: clone + translate CN to VI.
 
 ## Features
 
-- **100% block clone**: text, headings, lists, code, quotes, todos, callouts, grids, tables, quote containers, iframes, dividers
-- **Images**: download from Feishu → create empty block → upload to Lark → PATCH replace_image
-- **Videos/Files**: supports chunked upload for files >20MB (prepare/part/finish API)
-- **Tables**: create with property → insert rows → populate cells recursively
-- **Grids**: create columns → PATCH first child → clone remaining children
-- **Callouts**: create → delete default child → clone source children
+### Clone (clone.py)
+- **100% block-by-block clone**: text, headings, lists, code, quotes, todos, callouts, grids, tables, quote containers, iframes, dividers
+- **Images**: create empty block, download from Feishu, upload to Lark, PATCH replace_image
+- **Videos/Files**: chunked upload for files >20MB (prepare/part/finish API)
+- **Tables**: create with property, insert rows, populate cells recursively
+- **Grids**: create columns, PATCH first default child, clone remaining
+- **Callouts**: create, delete default child, clone source children
 - **Synced blocks (type 49)**: flatten children to parent level
-- **Resume-safe**: saves state after each page, can resume from where it left off
-- **Base tracker**: optional Bitable integration for real-time progress tracking
+- **QA verify**: auto-verify blocks/images/files after each clone
+- **Resume-safe**: state saved after each page
 
-## Block Types Supported
+### Translate (translate_gemini.py)
+- **Claude Code CLI**: uses Claude Sonnet for high-quality CN to VI translation
+- **Marker strategy**: preserves text formatting with `[[[N]]]` markers
+- **Code blocks**: translates Chinese comments only, preserves code syntax
+- **Images/files**: copies from cloned Lark docs (no re-download from Feishu)
+- **Resume-safe**: tracks translated pages in translate_state.json
+- **Base tracker**: updates Bitable with translation status and links
 
-| Type | Name | Method |
-|------|------|--------|
+## Block Types
+
+| Type | Name | Clone Method |
+|------|------|-------------|
 | 2-11 | text, headings | create with elements + style |
 | 12-15,17 | bullet, ordered, code, quote, todo | create with elements + style |
-| 19 | callout | create → del default child → clone children |
+| 19 | callout | create, del default child, clone children |
 | 22 | divider | create empty |
-| 23 | file/video | create → download → upload → PATCH replace_file |
-| 24 | grid | create → get column IDs → clone into columns |
+| 23 | file/video | create, download, upload, PATCH replace_file |
+| 24 | grid | create, get column IDs, clone into columns |
 | 26 | iframe | create with component URL |
-| 27 | image | create empty → download → upload → PATCH replace_image |
-| 31 | table | create → insert rows → populate cells |
+| 27 | image | create empty, download, upload, PATCH replace_image |
+| 31 | table | create, insert rows, populate cells |
 | 33 | view (file wrapper) | handle child file block |
-| 34 | quote container | create → clone children |
+| 34 | quote container | create, clone children |
 | 49 | synced block | flatten children to parent |
 
 ## Setup
 
-1. Create a Feishu/Lark app at [open.feishu.cn](https://open.feishu.cn) or [open.larksuite.com](https://open.larksuite.com)
+1. Create a Feishu/Lark app at [open.feishu.cn](https://open.feishu.cn)
 2. Grant permissions: `wiki:wiki`, `docx:document`, `drive:drive:readonly`, `drive:file`
-3. Edit `config.json` with your app credentials and wiki space IDs
-4. Install dependencies: `pip install -r requirements.txt`
+3. Edit `config.json` with credentials
+4. Install: `pip install -r requirements.txt`
+5. For translation: install Claude Code CLI
 
 ## Usage
 
 ```bash
-# 1. Crawl source wiki nodes
-python -u -X utf8 clone.py crawl
+# Clone
+python -u -X utf8 clone.py crawl          # crawl wiki nodes
+python -u -X utf8 clone.py test           # test 1 article
+python -u -X utf8 clone.py full           # full clone (resume-safe)
 
-# 2. Test with 1 article
-python -u -X utf8 clone.py test
+# Translate CN to VI
+python -u -X utf8 translate_gemini.py              # translate all
+python -u -X utf8 translate_gemini.py --stt N      # translate 1 page
+python -u -X utf8 translate_gemini.py --start N    # resume from page N
 
-# 3. Full clone
-python -u -X utf8 clone.py full
-
-# Resume (automatically skips completed pages)
-python -u -X utf8 clone.py full
+# Sync progress to Bitable
+python -u -X utf8 sync_base.py
 ```
 
 ## Config
-
-Edit `config.json`:
 
 ```json
 {
@@ -80,9 +89,10 @@ Edit `config.json`:
 
 ## Limitations
 
-- **Cover images**: Feishu/Lark API does not support setting document cover via API
+- **Cover images**: Feishu/Lark API does not support setting document cover
 - **Chat cards (type 20)**: cross-tenant, cannot clone
 - **Sheets (type 30)**: embedded spreadsheets, cannot clone via docx API
-- **Boards (type 43)**: whiteboard blocks, cannot clone via API
-- **Add-ons (type 40)**: interactive widgets (reactions etc), skip
+- **Boards (type 43)**: whiteboard, cannot clone via API
+- **Add-ons (type 40)**: interactive widgets, skip
 - **Synced references (type 50)**: cannot create via API
+- **.pptx/.pdf files**: not docx format, no blocks to clone

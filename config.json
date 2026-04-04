@@ -3,10 +3,12 @@
   "app_secret": "Ir2w591G4KnwYSoHhEoTDm2dGemfEpii",
   "feishu_base": "https://open.feishu.cn/open-apis",
   "lark_base": "https://open.larksuite.com/open-apis",
-  "lark_wiki_space_id": "7624485322121809637",
-  "wiki_dest_node": "J5DZw1LT9iVznhkfx8glRI7ggbP",
-  "base_app_token": "XQ0XbKksKaqEFssPjXnlL4fYgIh",
-  "base_table_id": "tblyYriufMtqTsIN",
+  "lark_wiki_space_id": "7624563017820147420",
+  "wiki_dest_node": "IQSHwx7lwicXrUkjyM6l8ng6gRc",
+  "base_app_token": "AbxJbgRWDaA34vs5C0UlaoPKg4g",
+  "base_table_id": "tblbJtfFDiXBZq4b",
+  "gemini_api_key": "AIzaSyBkpbFXxQkRNxFOD9yYE5qdLX1bf8Xtpls",
+  "gemini_model": "gemini-3-flash-preview",
   "wiki_session_domain": "larkcommunity.feishu.cn",
   "source_wikis": [
     {

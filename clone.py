@@ -524,13 +524,54 @@ def load_state():
 def save_state(state):
     with open(STATE_FILE,'w',encoding='utf-8') as f: json.dump(state,f,ensure_ascii=False)
 
+# ── Verify ──
+SKIP_TYPES = {20, 30, 40, 43, 48, 50, 51}  # types we can't clone via API
+
+def verify_clone(src_blocks, dst_doc):
+    """Compare source vs dest blocks. Returns (ok, report_dict)."""
+    from collections import Counter
+    dst_blocks = get_all_blocks(lark, dst_doc)
+
+    src_types = Counter(b["block_type"] for b in src_blocks)
+    dst_types = Counter(b["block_type"] for b in dst_blocks)
+
+    # Count clonable source blocks (exclude page, table_cell, grid_column, skip types)
+    non_count = {1, 25, 32} | SKIP_TYPES
+    src_clonable = sum(v for k, v in src_types.items() if k not in non_count)
+    dst_count = sum(v for k, v in dst_types.items() if k not in non_count)
+
+    # Images
+    src_imgs = sum(1 for b in src_blocks if b["block_type"] == 27)
+    dst_imgs = sum(1 for b in dst_blocks if b["block_type"] == 27 and b.get("image",{}).get("token",""))
+    dst_imgs_empty = sum(1 for b in dst_blocks if b["block_type"] == 27 and not b.get("image",{}).get("token",""))
+
+    # Files
+    src_files = sum(1 for b in src_blocks if b["block_type"] == 23)
+    dst_files = sum(1 for b in dst_blocks if b["block_type"] == 23 and b.get("file",{}).get("token",""))
+    dst_files_empty = sum(1 for b in dst_blocks if b["block_type"] == 23 and not b.get("file",{}).get("token",""))
+
+    report = {
+        "src_clonable": src_clonable, "dst_count": dst_count,
+        "block_pct": round(dst_count / src_clonable * 100) if src_clonable else 100,
+        "src_imgs": src_imgs, "dst_imgs": dst_imgs, "dst_imgs_empty": dst_imgs_empty,
+        "src_files": src_files, "dst_files": dst_files, "dst_files_empty": dst_files_empty,
+    }
+
+    # OK if: all images have tokens, all files have tokens, block count >= 80%
+    ok = (dst_imgs_empty == 0 and dst_files_empty == 0
+          and dst_imgs >= src_imgs and dst_files >= src_files
+          and report["block_pct"] >= 80)
+    return ok, report
+
+
 # ── Clone one page ──
 def clone_one(node, dest_parent):
     nt = node['node_token']
     title = node.get('title','(untitled)')
     t0 = time.time()
     res = {'success':False,'url':'','dest_node':'','blocks':0,'images':0,'img_fail':0,
-           'files':0,'file_fail':0,'failed':0,'skipped':0,'total_blocks':0,'elapsed':0,'error':''}
+           'files':0,'file_fail':0,'failed':0,'skipped':0,'total_blocks':0,'elapsed':0,
+           'error':'','verify':''}
     try:
         ni = None
         for a in range(3):
@@ -567,6 +608,16 @@ def clone_one(node, dest_parent):
             if bid in sm: process_block(sm[bid], sm, dd, dd, stats, src_doc)
         res['success'] = True
         for k in stats: res[k] = stats[k]
+
+        # ── Verify after clone ──
+        time.sleep(0.5)
+        v_ok, v_report = verify_clone(sb, dd)
+        res['verify'] = 'PASS' if v_ok else 'FAIL'
+        res['verify_detail'] = (f"blk:{v_report['dst_count']}/{v_report['src_clonable']}({v_report['block_pct']}%) "
+                                f"img:{v_report['dst_imgs']}/{v_report['src_imgs']} "
+                                f"file:{v_report['dst_files']}/{v_report['src_files']}"
+                                f"{' EMPTY_IMG:'+str(v_report['dst_imgs_empty']) if v_report['dst_imgs_empty'] else ''}"
+                                f"{' EMPTY_FILE:'+str(v_report['dst_files_empty']) if v_report['dst_files_empty'] else ''}")
     except Exception as e:
         res['error'] = str(e)[:200]
     res['elapsed'] = round(time.time()-t0)
@@ -670,21 +721,29 @@ def main():
 
         if info['success']:
             ok += 1; count += 1
+            vf = info.get('verify','?')
+            vd = info.get('verify_detail','')
             print(f"  OK | {info['blocks']}blk {info['images']}img {info['files']}file {info['failed']}fail {info['skipped']}skip | {info['elapsed']}s")
+            print(f"  QA | {vf} {vd}")
             dest_map[nt] = info['dest_node']
             completed.add(nt)
             state['dest_map'] = dest_map
             state['completed'] = list(completed)
             save_state(state)
+            qa_result = 'OK' if vf == 'PASS' else 'WARN'
             if rec: base_update(rec['record_id'], {
                 'Trạng thái':'Đã clone','Blocks gốc':info['total_blocks'],'Blocks clone':info['blocks'],
                 'Ảnh gốc':info['images']+info['img_fail'],'Ảnh clone':info['images'],
                 'Node Token mới':info['dest_node'],'Link mới':{'link':info['url'],'text':title},
-                'Ghi chú QA':f"{info['blocks']}blk {info['images']}img {info['files']}file {info['elapsed']}s",
-                'QA Kết quả':'OK' if info['failed']==0 and info['img_fail']==0 else 'WARN'})
+                'Ghi chú QA':f"{vd} | {info['elapsed']}s",
+                'QA Kết quả':qa_result})
         else:
             fail += 1; count += 1
             print(f"  FAIL | {info['error']}")
+            # Mark failed as completed so they get skipped on resume
+            completed.add(nt)
+            state['completed'] = list(completed)
+            save_state(state)
             if rec: base_update(rec['record_id'], {'Trạng thái':'Lỗi','Ghi chú QA':info['error'][:200],'QA Kết quả':'ERROR'})
         time.sleep(0.5)
 
