@@ -1,0 +1,19 @@
+{
+  "app_id": "<YOUR_FEISHU_APP_ID>",
+  "app_secret": "<YOUR_FEISHU_APP_SECRET>",
+  "feishu_base": "https://open.feishu.cn/open-apis",
+  "lark_base": "https://open.larksuite.com/open-apis",
+  "lark_wiki_space_id": "<TARGET_LARK_WIKI_SPACE_ID>",
+  "wiki_dest_node": "<TARGET_ROOT_NODE_TOKEN>",
+  "lark_wiki_url_prefix": "https://your-tenant.sg.larksuite.com/wiki",
+  "base_app_token": "",
+  "base_table_id": "",
+  "wiki_session_domain": "larkcommunity.feishu.cn",
+  "source_wikis": [
+    {
+      "name": "wiki1",
+      "root_token": "<SOURCE_WIKI_ROOT_NODE_TOKEN>",
+      "category_title": "My Wiki Category"
+    }
+  ]
+}

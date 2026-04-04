@@ -38,8 +38,26 @@ NODES_DIR = os.path.join(DIR, 'nodes')
 STATE_FILE = os.path.join(DIR, 'clone_state.json')
 TRANS_STATE_FILE = os.path.join(DIR, 'translate_state.json')
 
-# Claude CLI
-CLAUDE_CLI = r'C:\Users\vudan\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude-code\2.1.87\claude.exe'
+# Claude CLI — auto-detect path
+def _find_claude_cli():
+    import shutil, glob
+    # 1. Check PATH
+    p = shutil.which("claude")
+    if p: return p
+    # 2. Check Windows Store app location
+    for pattern in [
+        os.path.expandvars(r'%LOCALAPPDATA%\Packages\Claude_*\LocalCache\Roaming\Claude\claude-code\*\claude.exe'),
+        os.path.expandvars(r'%LOCALAPPDATA%\Programs\claude-code\claude.exe'),
+        os.path.expandvars(r'%USERPROFILE%\.claude\local\claude.exe'),
+    ]:
+        matches = glob.glob(pattern)
+        if matches: return sorted(matches)[-1]  # latest version
+    # 3. macOS / Linux
+    for p in ['/usr/local/bin/claude', os.path.expanduser('~/.claude/local/claude')]:
+        if os.path.exists(p): return p
+    return "claude"  # fallback to PATH
+
+CLAUDE_CLI = _find_claude_cli()
 
 BLOCK_TYPE_FIELD = {
     2: "text", 3: "heading1", 4: "heading2", 5: "heading3", 6: "heading4",
@@ -661,7 +679,8 @@ def translate_one(node, dest_node, trans_state, translate_parent):
     dn = cr['data']['node']
     dst_doc = dn['obj_token']
     new_node_token = dn['node_token']
-    url = f"https://congdongagi.sg.larksuite.com/wiki/{new_node_token}"
+    wiki_url = CFG.get("lark_wiki_url_prefix", "https://your-tenant.sg.larksuite.com/wiki")
+    url = f"{wiki_url}/{new_node_token}"
     print(f"  New: {url}")
 
     # Register for children

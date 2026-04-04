@@ -2,5 +2,6 @@ __pycache__/
 *.pyc
 clone_state.json
 translate_state.json
+config.json
 *.tmp
 *.log

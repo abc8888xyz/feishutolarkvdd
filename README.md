@@ -87,6 +87,17 @@ python -u -X utf8 sync_base.py
 }
 ```
 
+## Use as Claude Code Skill
+
+Install as a Claude Code skill to auto-trigger when you mention "clone wiki", "cào wiki", or paste a feishu.cn URL:
+
+```bash
+# Copy SKILL.md to your Claude skills directory
+cp SKILL.md ~/.claude/skills/feishu-to-lark-clone/SKILL.md
+```
+
+Or simply work in the project directory - Claude Code will detect the SKILL.md automatically.
+
 ## Limitations
 
 - **Cover images**: Feishu/Lark API does not support setting document cover

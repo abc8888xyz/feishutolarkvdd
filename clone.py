@@ -63,6 +63,7 @@ LARK_WIKI_SPACE_ID = CFG["lark_wiki_space_id"]
 WIKI_DEST_NODE = CFG["wiki_dest_node"]
 BASE_APP_TOKEN = CFG.get("base_app_token", "")
 BASE_TABLE_ID = CFG.get("base_table_id", "")
+LARK_WIKI_URL = CFG.get("lark_wiki_url_prefix", "https://your-tenant.sg.larksuite.com/wiki")
 
 BLOCK_TYPE_FIELD = {
     2: "text", 3: "heading1", 4: "heading2", 5: "heading3", 6: "heading4",
@@ -602,7 +603,7 @@ def clone_one(node, dest_parent):
         dn = cr['data']['node']
         dd = dn['obj_token']
         res['dest_node'] = dn['node_token']
-        res['url'] = f"https://gg5pahjppze.sg.larksuite.com/wiki/{dn['node_token']}"
+        res['url'] = f"{LARK_WIKI_URL}/{dn['node_token']}"
         stats = {"blocks":0,"images":0,"files":0,"failed":0,"skipped":0,"img_fail":0,"file_fail":0}
         for bid in rc:
             if bid in sm: process_block(sm[bid], sm, dd, dd, stats, src_doc)
